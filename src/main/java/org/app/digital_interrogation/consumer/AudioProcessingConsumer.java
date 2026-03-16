@@ -19,7 +19,7 @@ public class AudioProcessingConsumer {
     private final MinioService minioService;
     private final AudioProcessingService audioProcessingService;
 
-    @RabbitListener(queues = RabbitMQConfig.INTERROGATION_QUEUE)
+    @RabbitListener(queues = "${spring.rabbitmq.inter.queue}")
     public void processAudio(AudioProcessingMessage message) {
         log.info("📥 Received audio for processing: {} (ID: {}) from case {} uploaded by {}",
                 message.getAudioFileUrl(),

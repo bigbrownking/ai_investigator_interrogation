@@ -20,4 +20,5 @@ public class TranscriptionResultMessage {
     private Long processingDurationSeconds;
     private String email;
     private LocalDateTime timestamp;
+    private String fieldName;
 }

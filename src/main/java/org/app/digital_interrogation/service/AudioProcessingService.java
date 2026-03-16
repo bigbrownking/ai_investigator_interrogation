@@ -35,6 +35,22 @@ public class AudioProcessingService {
     @Value("${audio.model.port}")
     private String port;
 
+    @Value("${spring.rabbitmq.inter.result.pending.routing-key}")
+    public String INTERROGATION_RESULT_PENDING_ROUTING_KEY = "interrogation.result.pending";
+    @Value("${spring.rabbitmq.inter.result.processing.routing-key}")
+    public String INTERROGATION_RESULT_PROCESSING_ROUTING_KEY = "interrogation.result.processing";
+
+    @Value("${spring.rabbitmq.inter.result.success.routing-key}")
+    public String INTERROGATION_RESULT_SUCCESS_ROUTING_KEY = "interrogation.result.transcribed";
+
+    @Value("${spring.rabbitmq.inter.result.failure.routing-key}")
+    public String INTERROGATION_RESULT_FAILURE_ROUTING_KEY = "interrogation.result.failed";
+
+    @Value("${spring.rabbitmq.inter.result.exchange}")
+    public String INTERROGATION_RESULT_EXCHANGE = "interrogation.result.exchange";
+
+
+
     public void processAudio(InputStream fileStream, String fileName,
                              String caseNumber, AudioProcessingMessage originalMessage) {
 
@@ -115,6 +131,7 @@ public class AudioProcessingService {
                 .transcribedText(null)
                 .errorMessage(null)
                 .timestamp(LocalDateTime.now())
+                .fieldName(originalMessage.getFieldName())
                 .build());
 
         log.info("Sent PROCESSING notification for file {} (ID: {}) in case {} from user {}",
@@ -136,6 +153,7 @@ public class AudioProcessingService {
                 .errorMessage(null)
                 .timestamp(LocalDateTime.now())
                 .processingDurationSeconds(durationSeconds)
+                .fieldName(originalMessage.getFieldName())
                 .build());
 
         log.info("Sent COMPLETED notification for file {} (ID: {}) in case {} from user {} ({}s)",
@@ -158,6 +176,7 @@ public class AudioProcessingService {
                 .errorMessage(errorMessage)
                 .timestamp(LocalDateTime.now())
                 .processingDurationSeconds(durationSeconds)
+                .fieldName(originalMessage.getFieldName())
                 .build());
 
         log.error("Sent FAILED notification for file {} (ID: {}) in case {} from user {} ({}s): {}",
@@ -179,6 +198,7 @@ public class AudioProcessingService {
                 .transcribedText(null)
                 .errorMessage(null)
                 .timestamp(LocalDateTime.now())
+                .fieldName(originalMessage.getFieldName())
                 .build());
 
         log.info("Sent PENDING notification for file {} (ID: {}) in case {} from user {}",
@@ -195,14 +215,14 @@ public class AudioProcessingService {
         while (retryCount < maxRetries) {
             try {
                 rabbitTemplate.convertAndSend(
-                        RabbitMQConfig.INTERROGATION_RESULT_EXCHANGE,
+                        INTERROGATION_RESULT_EXCHANGE,
                         getRoutingKey(message.getStatus()),
                         message
                 );
 
                 log.debug("Successfully sent {} notification to exchange {} with routing key {}",
                         message.getStatus(),
-                        RabbitMQConfig.INTERROGATION_RESULT_EXCHANGE,
+                        INTERROGATION_RESULT_EXCHANGE,
                         getRoutingKey(message.getStatus()));
 
                 return;
@@ -238,10 +258,10 @@ public class AudioProcessingService {
 
     private String getRoutingKey(TranscriptionStatus status) {
         return switch (status) {
-            case PENDING -> RabbitMQConfig.INTERROGATION_RESULT_PENDING_ROUTING_KEY;
-            case PROCESSING -> RabbitMQConfig.INTERROGATION_RESULT_PROCESSING_ROUTING_KEY;
-            case COMPLETED -> RabbitMQConfig.INTERROGATION_RESULT_SUCCESS_ROUTING_KEY;
-            case FAILED -> RabbitMQConfig.INTERROGATION_RESULT_FAILURE_ROUTING_KEY;
+            case PENDING -> INTERROGATION_RESULT_PENDING_ROUTING_KEY;
+            case PROCESSING -> INTERROGATION_RESULT_PROCESSING_ROUTING_KEY;
+            case COMPLETED -> INTERROGATION_RESULT_SUCCESS_ROUTING_KEY;
+            case FAILED -> INTERROGATION_RESULT_FAILURE_ROUTING_KEY;
         };
     }
 }

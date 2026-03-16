@@ -4,26 +4,43 @@ import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RabbitMQConfig {
-    public static final String INTERROGATION_QUEUE = "interrogation.processing.queue";
-    public static final String INTERROGATION_EXCHANGE = "interrogation.exchange";
-    public static final String INTERROGATION_ROUTING_KEY = "interrogation.process";
 
-    public static final String INTERROGATION_RESULT_EXCHANGE = "interrogation.result.exchange";
+    @Value("${spring.rabbitmq.inter.queue}")
+    public String INTERROGATION_QUEUE = "interrogation.processing.queue";
+    @Value("${spring.rabbitmq.inter.exchange}")
+    public String INTERROGATION_EXCHANGE = "interrogation.exchange";
+    @Value("${spring.rabbitmq.inter.routing-key}")
+    public String INTERROGATION_ROUTING_KEY = "interrogation.process";
+
+    @Value("${spring.rabbitmq.inter.result.exchange}")
+    public String INTERROGATION_RESULT_EXCHANGE = "interrogation.result.exchange";
 
     // Routing keys по статусам
-    public static final String INTERROGATION_RESULT_PENDING_ROUTING_KEY = "interrogation.result.pending";
-    public static final String INTERROGATION_RESULT_PROCESSING_ROUTING_KEY = "interrogation.result.processing";
-    public static final String INTERROGATION_RESULT_SUCCESS_ROUTING_KEY = "interrogation.result.transcribed";
-    public static final String INTERROGATION_RESULT_FAILURE_ROUTING_KEY = "interrogation.result.failed";
+    @Value("${spring.rabbitmq.inter.result.pending.routing-key}")
+    public String INTERROGATION_RESULT_PENDING_ROUTING_KEY = "interrogation.result.pending";
+    @Value("${spring.rabbitmq.inter.result.processing.routing-key}")
+    public String INTERROGATION_RESULT_PROCESSING_ROUTING_KEY = "interrogation.result.processing";
 
-    public static final String DLQ_QUEUE = "document.dlq";
-    public static final String DLQ_EXCHANGE = "document.dlq.exchange";
-    public static final String DLQ_ROUTING_KEY = "document.dlq";
+    @Value("${spring.rabbitmq.inter.result.success.routing-key}")
+    public String INTERROGATION_RESULT_SUCCESS_ROUTING_KEY = "interrogation.result.transcribed";
+
+    @Value("${spring.rabbitmq.inter.result.failure.routing-key}")
+    public String INTERROGATION_RESULT_FAILURE_ROUTING_KEY = "interrogation.result.failed";
+
+    @Value("${spring.rabbitmq.dlq.queue}")
+    public String DLQ_QUEUE = "document.dlq";
+
+    @Value("${spring.rabbitmq.dlq.exchange}")
+    public String DLQ_EXCHANGE = "document.dlq.exchange";
+
+    @Value("${spring.rabbitmq.dlq.routing-key}")
+    public String DLQ_ROUTING_KEY = "document.dlq";
     @Bean
     public Queue interrogationQueue() {
         return QueueBuilder.durable(INTERROGATION_QUEUE)
