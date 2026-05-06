@@ -36,8 +36,9 @@ public class AudioProcessingConsumer {
 
             audioProcessingService.processAudio(
                     fileStream,
-                    message.getAudioFileUrl(),
+                    message.getOriginalFileName(),
                     message.getLanguage(),
+                    message.getCaseNumber(),
                     message
             );
 

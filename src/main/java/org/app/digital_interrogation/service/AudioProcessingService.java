@@ -35,23 +35,24 @@ public class AudioProcessingService {
     @Value("${audio.model.port}")
     private String port;
 
+    @Value("${audio.kaz.model.url}")
+    private String aiKazModelUrl;
+
+    @Value("${audio.kaz.model.port}")
+    private String kazPort;
+
     @Value("${spring.rabbitmq.inter.result.pending.routing-key}")
     public String INTERROGATION_RESULT_PENDING_ROUTING_KEY = "interrogation.result.pending";
     @Value("${spring.rabbitmq.inter.result.processing.routing-key}")
     public String INTERROGATION_RESULT_PROCESSING_ROUTING_KEY = "interrogation.result.processing";
-
     @Value("${spring.rabbitmq.inter.result.success.routing-key}")
     public String INTERROGATION_RESULT_SUCCESS_ROUTING_KEY = "interrogation.result.transcribed";
-
     @Value("${spring.rabbitmq.inter.result.failure.routing-key}")
     public String INTERROGATION_RESULT_FAILURE_ROUTING_KEY = "interrogation.result.failed";
-
     @Value("${spring.rabbitmq.inter.result.exchange}")
     public String INTERROGATION_RESULT_EXCHANGE = "interrogation.result.exchange";
 
-
-
-    public void processAudio(InputStream fileStream, String fileName,
+    public void processAudio(InputStream fileStream, String fileName, String language,
                              String caseNumber, AudioProcessingMessage originalMessage) {
 
         notifyProcessing(originalMessage);
@@ -59,7 +60,7 @@ public class AudioProcessingService {
         try {
             byte[] fileBytes = fileStream.readAllBytes();
 
-            processAudioAsync(fileBytes, fileName, caseNumber, originalMessage);
+            processAudioAsync(fileBytes, fileName, language, caseNumber, originalMessage);
 
             log.info("Transcription task submitted for file {} (ID: {}) in case {}",
                     fileName, originalMessage.getInterrogationId(), caseNumber);
@@ -72,18 +73,32 @@ public class AudioProcessingService {
     }
 
     @Async("audioProcessingExecutor")
-    public void processAudioAsync(byte[] fileBytes, String fileName,
+    public void processAudioAsync(byte[] fileBytes, String fileName, String language,
                                   String caseNumber, AudioProcessingMessage originalMessage) {
         long startTime = System.currentTimeMillis();
 
         try {
+            String modelUrl;
+            String modelPort;
+            boolean isKazakh = "казахском".equalsIgnoreCase(language);
+
+            if (isKazakh) {
+                modelUrl = aiKazModelUrl;
+                modelPort = kazPort;
+                log.info("Using Kazakh model for transcription: {}:{}", modelUrl, modelPort);
+            } else {
+                modelUrl = aiModelUrl;
+                modelPort = port;
+                log.info("Using Russian model for transcription: {}:{}", modelUrl, modelPort);
+            }
+
             log.info("Transcription started for file {} (ID: {}) in case {}",
                     fileName, originalMessage.getInterrogationId(), caseNumber);
 
             String result = webClient.post()
                     .uri(aiModelUrl + ":" + port + "/transcribe")
                     .contentType(MediaType.MULTIPART_FORM_DATA)
-                    .bodyValue(createMultipartBody(fileBytes, fileName))
+                    .bodyValue(createMultipartBody(fileBytes, fileName, isKazakh))
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
@@ -103,7 +118,7 @@ public class AudioProcessingService {
         }
     }
 
-    private MultiValueMap<String, Object> createMultipartBody(byte[] fileBytes, String fileName) {
+    private MultiValueMap<String, Object> createMultipartBody(byte[] fileBytes, String fileName, boolean isKazakh) {
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
 
         ByteArrayResource fileResource = new ByteArrayResource(fileBytes) {
@@ -115,8 +130,13 @@ public class AudioProcessingService {
 
         HttpHeaders fileHeaders = new HttpHeaders();
         fileHeaders.setContentType(MediaType.parseMediaType("audio/wav"));
-        body.add("data", new HttpEntity<>(fileResource, fileHeaders));
-        body.add("language", "");
+
+        if (isKazakh) {
+            body.add("file", new HttpEntity<>(fileResource, fileHeaders));
+        } else {
+            body.add("data", new HttpEntity<>(fileResource, fileHeaders));
+            body.add("language", "");
+        }
 
         return body;
     }
@@ -125,6 +145,7 @@ public class AudioProcessingService {
         sendNotification(TranscriptionResultMessage.builder()
                 .interrogationId(originalMessage.getInterrogationId())
                 .qaId(originalMessage.getQaId())
+                .recordId(originalMessage.getRecordId())
                 .caseNumber(originalMessage.getCaseNumber())
                 .email(originalMessage.getEmail())
                 .status(TranscriptionStatus.PROCESSING)
@@ -146,6 +167,7 @@ public class AudioProcessingService {
         sendNotification(TranscriptionResultMessage.builder()
                 .interrogationId(originalMessage.getInterrogationId())
                 .qaId(originalMessage.getQaId())
+                .recordId(originalMessage.getRecordId())
                 .caseNumber(originalMessage.getCaseNumber())
                 .email(originalMessage.getEmail())
                 .status(TranscriptionStatus.COMPLETED)
@@ -169,6 +191,7 @@ public class AudioProcessingService {
         sendNotification(TranscriptionResultMessage.builder()
                 .interrogationId(originalMessage.getInterrogationId())
                 .qaId(originalMessage.getQaId())
+                .recordId(originalMessage.getRecordId())
                 .caseNumber(originalMessage.getCaseNumber())
                 .email(originalMessage.getEmail())
                 .status(TranscriptionStatus.FAILED)
@@ -192,6 +215,7 @@ public class AudioProcessingService {
         sendNotification(TranscriptionResultMessage.builder()
                 .interrogationId(originalMessage.getInterrogationId())
                 .qaId(originalMessage.getQaId())
+                .recordId(originalMessage.getRecordId())
                 .caseNumber(originalMessage.getCaseNumber())
                 .email(originalMessage.getEmail())
                 .status(TranscriptionStatus.PENDING)

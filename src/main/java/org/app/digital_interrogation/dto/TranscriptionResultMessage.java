@@ -13,6 +13,7 @@ public class TranscriptionResultMessage {
     private Long interrogationId;
     private Long qaId;
     private Long caseId;
+    private Long recordId;
     private String caseNumber;
     private TranscriptionStatus status;
     private String transcribedText;
